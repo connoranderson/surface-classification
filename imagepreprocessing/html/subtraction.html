@@ -1,0 +1,775 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>subtraction</title><meta name="generator" content="MATLAB 7.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2016-11-19"><meta name="DC.source" content="subtraction.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, tt, code { font-size:12px; }
+pre { margin:0px 0px 20px; }
+pre.error { color:red; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#1">CS229 Image Preprocessing</a></li><li><a href="#3">Threshold filter</a></li><li><a href="#4">Output data to text file</a></li></ul></div><h2>CS229 Image Preprocessing<a name="1"></a></h2><p>Code by Connor Anderson</p><pre class="codeinput"><span class="comment">% Navigates to data folder and goes through images one by one, subtracting</span>
+<span class="comment">% the flash images with the raw image to find the number of potential flash</span>
+<span class="comment">% regions. The maximum region area, along with the number of regions are</span>
+<span class="comment">% output into the text file: 'circleParams.txt' for use in primary learning</span>
+<span class="comment">% algorithm.</span>
+
+close <span class="string">all</span>;
+clear <span class="string">all</span>;
+
+fileID = fopen(<span class="string">'/Users/Connor/Box Sync/School/Graduate/CS229/Project/imagepreprocessing/Data/distanceData.txt'</span>,<span class="string">'r'</span>);
+
+num_missing = 0;
+num_processed = 0;
+num_onlyOne = 0;
+
+
+<span class="keyword">while</span> true
+    close <span class="string">all</span>;
+    tline = fgetl(fileID);
+    <span class="keyword">if</span> tline == -1
+       <span class="keyword">break</span>
+    <span class="keyword">end</span>
+    pat = <span class="string">'\s+'</span>;
+    n = regexp(tline, pat, <span class="string">'split'</span>);
+    space = <span class="string">' '</span>;
+    base_filename = strcat(n(1),{space},n(2));
+    filename_flash = strcat(n(1),{space},n(2),{space},<span class="string">'wflash.jpg'</span>);
+    filename_noflash = strcat(n(1),{space},n(2),{space},<span class="string">'noflash.jpg'</span>);
+    filename_flash = strrep(filename_flash{1},<span class="string">':'</span>,<span class="string">'_'</span>);
+    filename_noflash = strrep(filename_noflash{1},<span class="string">':'</span>,<span class="string">'_'</span>);
+
+
+    cd <span class="string">~/Box' Sync'/School/Graduate/CS229/Project/imagepreprocessing/Data</span>
+
+    <span class="keyword">if</span> exist(filename_flash, <span class="string">'file'</span>) == 2 &amp;&amp; exist(filename_noflash, <span class="string">'file'</span>) == 2
+</pre><pre class="codeinput">        num_processed = num_processed + 1;
+        I = imread(filename_flash);
+<span class="comment">%         figure, imshow(I,[])</span>
+        B = imread(filename_noflash);
+<span class="comment">%         figure, imshow(B,[])</span>
+        Ip = imsubtract(I,B);
+<span class="comment">%         figure, imshow(Ip,[])</span>
+
+        imwrite(Ip,<span class="string">'subtract.jpg'</span>)
+
+        normI = im2double(I);
+        normB = im2double(B);
+        Ip_norm = imsubtract(I,B);
+        Ip_norm = double(Ip_norm)./max(double(max(double(Ip_norm(:,:)))))*255;
+        Ip_norm = uint8(round(Ip_norm));
+<span class="comment">%         figure, imshow(Ip_norm,[])</span>
+        imwrite(Ip_norm,<span class="string">'normsubtract.jpg'</span>)
+</pre><h2>Threshold filter<a name="3"></a></h2><pre class="codeinput">        meanPixel = squeeze(mean(mean(Ip_norm)));
+        thresh = mean(meanPixel);
+        Ip_norm(Ip_norm&lt;thresh) = 0;
+
+        Ip_norm_grey = rgb2gray(Ip_norm);
+<span class="comment">%         figure, imshow(Ip_norm_grey)</span>
+<span class="comment">%         figure, imhist(Ip_norm_grey)</span>
+        hist = imhist(Ip_norm_grey);
+        levels = linspace(0,1,length(hist));
+        [approx_mean mean_index] = max(hist);
+
+        <span class="comment">% level = levels(mean_index) + 0.3;</span>
+        level = 0.6;
+        fThresh = im2bw(Ip_norm_grey, level) ;
+        figure, imshow(fThresh)
+<span class="comment">%         imwrite(fThresh,'topHat_grey.jpg')</span>
+
+<span class="comment">%         [B,L,N,A] = bwboundaries(fThresh,'noholes');</span>
+<span class="comment">%         figure, imshow(fThresh); hold on;</span>
+<span class="comment">%         colors=['b' 'g' 'r' 'c' 'm' 'y'];</span>
+<span class="comment">%         for k=1:length(B),</span>
+<span class="comment">%           boundary = B{k};</span>
+<span class="comment">%           cidx = mod(k,length(colors))+1;</span>
+<span class="comment">%           plot(boundary(:,2), boundary(:,1),...</span>
+<span class="comment">%                colors(cidx),'LineWidth',2);</span>
+<span class="comment">%</span>
+<span class="comment">%           %randomize text position for better visibility</span>
+<span class="comment">%           rndRow = ceil(length(boundary)/(mod(rand*k,7)+1));</span>
+<span class="comment">%           col = boundary(rndRow,2); row = boundary(rndRow,1);</span>
+<span class="comment">%           h = text(col+1, row-1, num2str(L(row,col)));</span>
+<span class="comment">%           set(h,'Color',colors(cidx),'FontSize',14,'FontWeight','bold');</span>
+<span class="comment">%         end</span>
+
+        measurements = regionprops(fThresh, <span class="string">'Area'</span>);
+        allAreas = [measurements.Area];
+
+        cd <span class="string">~/Box' Sync'/School/Graduate/CS229/Project/imagepreprocessing</span>
+</pre><pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_01.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_02.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_03.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_04.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_05.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_06.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_07.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_08.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_09.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_10.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_11.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_12.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_13.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_14.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_15.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_16.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_17.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_18.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_19.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_20.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_21.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_22.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_23.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_24.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_25.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_26.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_27.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_28.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_29.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_30.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_31.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_32.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_33.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_34.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_35.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_36.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_37.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_38.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_39.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_40.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_41.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_42.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_43.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_44.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_45.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_46.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_47.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_48.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_49.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_50.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_51.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_52.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_53.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_54.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_55.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_56.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_57.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_58.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_59.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_60.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_61.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_62.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_63.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_64.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_65.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_66.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_67.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_68.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_69.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_70.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_71.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_72.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_73.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_74.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_75.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_76.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_77.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_78.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_79.png" alt=""> <pre class="codeoutput">Warning: Image is too big to fit on screen; displaying at 67% 
+</pre><img vspace="5" hspace="5" src="subtraction_80.png" alt=""> <h2>Output data to text file<a name="4"></a></h2><pre class="codeinput">        fileID2 = fopen(<span class="string">'circleParams.txt'</span>,<span class="string">'a+'</span>);
+        fmt = <span class="string">'\n'</span>;
+        line = strcat(base_filename,<span class="string">' NumRegions:'</span>,num2str(length(allAreas)),<span class="string">' MaxRegionArea:'</span>,num2str(max(allAreas)),<span class="string">' '</span>)
+        fprintf(fileID2,<span class="string">'%s\n'</span>,line{1});
+        fclose(fileID2);
+</pre><pre class="codeoutput">
+line = 
+
+    '2016-11-12 04:21:10 NumRegions:25 MaxRegionArea:41'
+
+
+line = 
+
+    '2016-11-12 04:23:02 NumRegions:46 MaxRegionArea:53'
+
+
+line = 
+
+    '2016-11-12 04:24:56 NumRegions:30 MaxRegionArea:14390'
+
+
+line = 
+
+    '2016-11-12 04:25:21 NumRegions:40 MaxRegionArea:7902'
+
+
+line = 
+
+    '2016-11-12 04:35:36 NumRegions:1 MaxRegionArea:40'
+
+
+line = 
+
+    '2016-11-12 04:37:45 NumRegions:1423 MaxRegionArea:111007'
+
+
+line = 
+
+    '2016-11-12 04:38:11 NumRegions:63 MaxRegionArea:853'
+
+
+line = 
+
+    '2016-11-12 04:38:33 NumRegions:2 MaxRegionArea:1'
+
+
+line = 
+
+    '2016-11-12 04:38:57 NumRegions:73 MaxRegionArea:23876'
+
+
+line = 
+
+    '2016-11-12 04:39:09 NumRegions:44 MaxRegionArea:16337'
+
+
+line = 
+
+    '2016-11-12 04:39:36 NumRegions:3 MaxRegionArea:3144'
+
+
+line = 
+
+    '2016-11-12 04:39:55 NumRegions:2 MaxRegionArea:3639'
+
+
+line = 
+
+    '2016-11-12 04:40:19 NumRegions:2336 MaxRegionArea:412391'
+
+
+line = 
+
+    '2016-11-12 04:42:06 NumRegions:18 MaxRegionArea:3194'
+
+
+line = 
+
+    '2016-11-12 04:42:18 NumRegions:21 MaxRegionArea:2227'
+
+
+line = 
+
+    '2016-11-12 04:42:34 NumRegions:18 MaxRegionArea:1721'
+
+
+line = 
+
+    '2016-11-12 04:42:45 NumRegions:5 MaxRegionArea:16'
+
+
+line = 
+
+    '2016-11-12 04:42:58 NumRegions:1 MaxRegionArea:14'
+
+
+line = 
+
+    '2016-11-12 04:43:21 NumRegions:1458 MaxRegionArea:1852'
+
+
+line = 
+
+    '2016-11-12 04:43:34 NumRegions:29 MaxRegionArea:13259'
+
+
+line = 
+
+    '2016-11-12 04:43:45 NumRegions:53 MaxRegionArea:6693'
+
+
+line = 
+
+    '2016-11-12 04:44:06 NumRegions:3 MaxRegionArea:114'
+
+
+line = 
+
+    '2016-11-12 04:44:32 NumRegions:5 MaxRegionArea:2801'
+
+
+line = 
+
+    '2016-11-12 04:45:24 NumRegions:78 MaxRegionArea:5'
+
+
+line = 
+
+    '2016-11-12 04:45:53 NumRegions:336 MaxRegionArea:7742'
+
+
+line = 
+
+    '2016-11-12 04:46:11 NumRegions:27 MaxRegionArea:35'
+
+
+line = 
+
+    '2016-11-12 04:46:40 NumRegions:13 MaxRegionArea:21400'
+
+
+line = 
+
+    '2016-11-12 04:47:01 NumRegions:9 MaxRegionArea:165'
+
+
+line = 
+
+    '2016-11-12 04:47:18 NumRegions:156 MaxRegionArea:3711'
+
+
+line = 
+
+    '2016-11-12 04:47:41 NumRegions:7 MaxRegionArea:37'
+
+
+line = 
+
+    '2016-11-12 04:48:01 NumRegions:39 MaxRegionArea:365'
+
+
+line = 
+
+    '2016-11-12 04:48:11 NumRegions:4 MaxRegionArea:278'
+
+
+line = 
+
+    '2016-11-12 04:48:26 NumRegions:7 MaxRegionArea:635'
+
+
+line = 
+
+    '2016-11-12 04:48:54 NumRegions:42 MaxRegionArea:307'
+
+
+line = 
+
+    '2016-11-12 04:50:18 NumRegions:3 MaxRegionArea:5265'
+
+
+line = 
+
+    '2016-11-12 04:50:34 NumRegions:10 MaxRegionArea:2772'
+
+
+line = 
+
+    '2016-11-12 04:52:31 NumRegions:1196 MaxRegionArea:33'
+
+
+line = 
+
+    '2016-11-12 04:52:43 NumRegions:361 MaxRegionArea:243'
+
+
+line = 
+
+    '2016-11-12 04:52:57 NumRegions:308 MaxRegionArea:1853'
+
+
+line = 
+
+    '2016-11-12 04:53:10 NumRegions:244 MaxRegionArea:53'
+
+
+line = 
+
+    '2016-11-12 04:53:33 NumRegions:149 MaxRegionArea:216'
+
+
+line = 
+
+    '2016-11-12 04:54:03 NumRegions:372 MaxRegionArea:164'
+
+
+line = 
+
+    '2016-11-12 04:54:21 NumRegions:305 MaxRegionArea:57'
+
+
+line = 
+
+    '2016-11-12 04:54:39 NumRegions:138 MaxRegionArea:300'
+
+
+line = 
+
+    '2016-11-12 04:54:59 NumRegions:7 MaxRegionArea:5'
+
+
+line = 
+
+    '2016-11-12 04:55:31 NumRegions:582 MaxRegionArea:319'
+
+
+line = 
+
+    '2016-11-12 04:55:41 NumRegions:187 MaxRegionArea:315'
+
+
+line = 
+
+    '2016-11-12 04:56:02 NumRegions:1028 MaxRegionArea:326'
+
+
+line = 
+
+    '2016-11-12 04:56:36 NumRegions:223 MaxRegionArea:482'
+
+
+line = 
+
+    '2016-11-12 04:56:52 NumRegions:59 MaxRegionArea:1121'
+
+
+line = 
+
+    '2016-11-12 04:57:25 NumRegions:323 MaxRegionArea:515'
+
+
+line = 
+
+    '2016-11-12 04:57:34 NumRegions:86 MaxRegionArea:482'
+
+
+line = 
+
+    '2016-11-12 04:57:42 NumRegions:40 MaxRegionArea:47'
+
+
+line = 
+
+    '2016-11-12 04:57:51 NumRegions:492 MaxRegionArea:148'
+
+
+line = 
+
+    '2016-11-12 04:58:07 NumRegions:589 MaxRegionArea:505'
+
+
+line = 
+
+    '2016-11-12 04:58:28 NumRegions:479 MaxRegionArea:305'
+
+
+line = 
+
+    '2016-11-12 04:58:50 NumRegions:292 MaxRegionArea:349'
+
+
+line = 
+
+    '2016-11-12 04:58:59 NumRegions:313 MaxRegionArea:65'
+
+
+line = 
+
+    '2016-11-12 04:59:07 NumRegions:351 MaxRegionArea:42'
+
+
+line = 
+
+    '2016-11-12 04:59:16 NumRegions:26 MaxRegionArea:582'
+
+
+line = 
+
+    '2016-11-12 04:59:28 NumRegions:245 MaxRegionArea:129'
+
+
+line = 
+
+    '2016-11-12 04:59:38 NumRegions:771 MaxRegionArea:1210'
+
+
+line = 
+
+    '2016-11-12 05:00:40 NumRegions:311 MaxRegionArea:2658'
+
+
+line = 
+
+    '2016-11-12 05:00:49 NumRegions:325 MaxRegionArea:68'
+
+
+line = 
+
+    '2016-11-12 05:01:03 NumRegions:598 MaxRegionArea:318'
+
+
+line = 
+
+    '2016-11-12 05:01:48 NumRegions:145 MaxRegionArea:681'
+
+
+line = 
+
+    '2016-11-12 05:02:08 NumRegions:527 MaxRegionArea:15164'
+
+
+line = 
+
+    '2016-11-12 05:02:17 NumRegions:248 MaxRegionArea:2174'
+
+
+line = 
+
+    '2016-11-12 05:02:44 NumRegions:33 MaxRegionArea:4347'
+
+
+line = 
+
+    '2016-11-12 05:03:05 NumRegions:25 MaxRegionArea:7167'
+
+
+line = 
+
+    '2016-11-12 05:03:27 NumRegions:6 MaxRegionArea:15417'
+
+
+line = 
+
+    '2016-11-12 05:03:35 NumRegions:8 MaxRegionArea:16023'
+
+
+line = 
+
+    '2016-11-12 05:03:58 NumRegions:144 MaxRegionArea:175'
+
+
+line = 
+
+    '2016-11-12 05:04:09 NumRegions:3 MaxRegionArea:93'
+
+
+line = 
+
+    '2016-11-12 05:04:29 NumRegions:20 MaxRegionArea:13'
+
+
+line = 
+
+    '2016-11-12 05:04:37 NumRegions:7 MaxRegionArea:29'
+
+
+line = 
+
+    '2016-11-12 05:04:53 NumRegions:103 MaxRegionArea:2647'
+
+
+line = 
+
+    '2016-11-12 05:05:02 NumRegions:10 MaxRegionArea:9450'
+
+
+line = 
+
+    '2016-11-12 05:05:15 NumRegions:129 MaxRegionArea:2300'
+
+
+line = 
+
+    '2016-11-12 05:05:26 NumRegions:44 MaxRegionArea:484'
+
+Summary: 
+ Missing: 1 
+ Processed: 80 
+ MissingOne: 0 
+</pre><pre class="codeinput">    <span class="keyword">else</span>
+        <span class="keyword">if</span> exist(filename_flash, <span class="string">'file'</span>) == 2 || exist(filename_noflash, <span class="string">'file'</span>) == 2
+            num_onlyOne = num_onlyOne+1;
+        <span class="keyword">end</span>
+        num_missing = num_missing+1;
+        cd <span class="string">~/Box' Sync'/School/Graduate/CS229/Project/imagepreprocessing</span>
+        fprintf(<span class="string">'Could not find an image file'</span>);
+    <span class="keyword">end</span>
+
+
+
+<span class="keyword">end</span>
+
+
+fprintf(<span class="string">'Summary: \r\n Missing: %d \r\n Processed: %d \r\n MissingOne: %d \r\n'</span>,num_missing,num_processed,num_onlyOne);
+</pre><pre class="codeoutput">Could not find an image file</pre><p class="footer"><br>
+      Published with MATLAB&reg; 7.14<br></p></div><!--
+##### SOURCE BEGIN #####
+%% CS229 Image Preprocessing
+% Code by Connor Anderson
+
+% Navigates to data folder and goes through images one by one, subtracting
+% the flash images with the raw image to find the number of potential flash
+% regions. The maximum region area, along with the number of regions are
+% output into the text file: 'circleParams.txt' for use in primary learning 
+% algorithm.
+
+close all;
+clear all;
+
+fileID = fopen('/Users/Connor/Box Sync/School/Graduate/CS229/Project/imagepreprocessing/Data/distanceData.txt','r');
+
+num_missing = 0;
+num_processed = 0;
+num_onlyOne = 0;
+
+
+while true
+    close all;
+    tline = fgetl(fileID);
+    if tline == -1
+       break 
+    end
+    pat = '\s+';
+    n = regexp(tline, pat, 'split');
+    space = ' ';
+    base_filename = strcat(n(1),{space},n(2));
+    filename_flash = strcat(n(1),{space},n(2),{space},'wflash.jpg');
+    filename_noflash = strcat(n(1),{space},n(2),{space},'noflash.jpg');
+    filename_flash = strrep(filename_flash{1},':','_');
+    filename_noflash = strrep(filename_noflash{1},':','_');
+    
+    
+    cd ~/Box' Sync'/School/Graduate/CS229/Project/imagepreprocessing/Data
+    
+    if exist(filename_flash, 'file') == 2 && exist(filename_noflash, 'file') == 2
+        num_processed = num_processed + 1;
+        I = imread(filename_flash);
+%         figure, imshow(I,[])
+        B = imread(filename_noflash);
+%         figure, imshow(B,[])
+        Ip = imsubtract(I,B);
+%         figure, imshow(Ip,[])
+
+        imwrite(Ip,'subtract.jpg')
+
+        normI = im2double(I);
+        normB = im2double(B);
+        Ip_norm = imsubtract(I,B);
+        Ip_norm = double(Ip_norm)./max(double(max(double(Ip_norm(:,:)))))*255; 
+        Ip_norm = uint8(round(Ip_norm));
+%         figure, imshow(Ip_norm,[])
+        imwrite(Ip_norm,'normsubtract.jpg')
+
+
+        %% Threshold filter
+
+        meanPixel = squeeze(mean(mean(Ip_norm)));
+        thresh = mean(meanPixel);
+        Ip_norm(Ip_norm<thresh) = 0;
+
+        Ip_norm_grey = rgb2gray(Ip_norm);
+%         figure, imshow(Ip_norm_grey)
+%         figure, imhist(Ip_norm_grey)
+        hist = imhist(Ip_norm_grey);
+        levels = linspace(0,1,length(hist));
+        [approx_mean mean_index] = max(hist);
+
+        % level = levels(mean_index) + 0.3;
+        level = 0.6;
+        fThresh = im2bw(Ip_norm_grey, level) ;
+        figure, imshow(fThresh)
+%         imwrite(fThresh,'topHat_grey.jpg')
+
+%         [B,L,N,A] = bwboundaries(fThresh,'noholes');
+%         figure, imshow(fThresh); hold on;
+%         colors=['b' 'g' 'r' 'c' 'm' 'y'];
+%         for k=1:length(B),
+%           boundary = B{k};
+%           cidx = mod(k,length(colors))+1;
+%           plot(boundary(:,2), boundary(:,1),...
+%                colors(cidx),'LineWidth',2);
+% 
+%           %randomize text position for better visibility
+%           rndRow = ceil(length(boundary)/(mod(rand*k,7)+1));
+%           col = boundary(rndRow,2); row = boundary(rndRow,1);
+%           h = text(col+1, row-1, num2str(L(row,col)));
+%           set(h,'Color',colors(cidx),'FontSize',14,'FontWeight','bold');
+%         end
+
+        measurements = regionprops(fThresh, 'Area');
+        allAreas = [measurements.Area];
+
+        cd ~/Box' Sync'/School/Graduate/CS229/Project/imagepreprocessing
+
+        %% Output data to text file
+        fileID2 = fopen('circleParams.txt','a+');
+        fmt = '\n';
+        line = strcat(base_filename,' NumRegions:',num2str(length(allAreas)),' MaxRegionArea:',num2str(max(allAreas)),' ')
+        fprintf(fileID2,'%s\n',line{1});
+        fclose(fileID2);
+        
+    else
+        if exist(filename_flash, 'file') == 2 || exist(filename_noflash, 'file') == 2
+            num_onlyOne = num_onlyOne+1;
+        end        
+        num_missing = num_missing+1;
+        cd ~/Box' Sync'/School/Graduate/CS229/Project/imagepreprocessing
+        fprintf('Could not find an image file');
+    end
+    
+    
+
+end
+
+
+fprintf('Summary: \r\n Missing: %d \r\n Processed: %d \r\n MissingOne: %d \r\n',num_missing,num_processed,num_onlyOne);
+
+##### SOURCE END #####
+--></body></html>
