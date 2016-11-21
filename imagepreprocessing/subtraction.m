@@ -11,7 +11,7 @@ close all;
 clear all;
 
 % Load distance data 
-fileID = fopen('/Users/Connor/Box Sync/School/Graduate/CS229/Project/imagepreprocessing/Data/distanceData.txt','r');
+fileID = fopen('Data/distanceData.txt','r');
 
 % Variables Logging Missing Images
 num_missing = 0;
@@ -47,32 +47,45 @@ while true
     filename_flash = strrep(filename_flash{1},':','_');
     filename_noflash = strrep(filename_noflash{1},':','_');
     class_string = n{6};
-    classification = str2num(class_string(length(class_string)));
+    class = str2num(class_string(length(class_string)));
     distance = str2num(n{5});
     
     % Enter Data Folder
-    cd ~/Box' Sync'/School/Graduate/CS229/Project/imagepreprocessing/Data
+    cd Data
     
     % Check if image exists in directory
     if exist(filename_flash, 'file') == 2 && exist(filename_noflash, 'file') == 2
         num_processed = num_processed + 1;
         I = imread(filename_flash);
-%         figure, imshow(I,[])
+        figure(1), imshow(I,[])
         B = imread(filename_noflash);
-%         figure, imshow(B,[])
-        Ip = imsubtract(I,B);
-%         figure, imshow(Ip,[])
+        figure(2), imshow(B,[])
 
-        imwrite(Ip,'subtract.jpg')
+        % Exit Data Folder
+        cd ..
 
         % Image subtraction
         normI = im2double(I);
         normB = im2double(B);
         Ip_norm = imsubtract(I,B);
+        figure(3), imshow(Ip_norm,[])
+        
+        % Ignore regions outside of bounding box
+        Leftbound = 350;
+        Rightbound = 800;
+        TopBound = 330;
+        BottomBound = 450;
+        Ip_norm = Ip_norm(TopBound:BottomBound,Leftbound:Rightbound,:);
+        
+        % Image normalization (only normalize if not a dark image)
+        PixIntensityThresh = 60;
+        if (norm(double(squeeze(max(max(Ip_norm))))) > PixIntensityThresh)
+            Ip_norm = double(Ip_norm)./max(double(max(double(Ip_norm(:,:)))))*255; 
+        end        
+        
         % Image normalization
-        Ip_norm = double(Ip_norm)./max(double(max(double(Ip_norm(:,:)))))*255; 
         Ip_norm = uint8(round(Ip_norm));
-%         figure, imshow(Ip_norm,[])
+        figure(4), imshow(Ip_norm,[])
         imwrite(Ip_norm,'normsubtract.jpg')
 
         % Find mean pixel and use it as threshold for black/white
@@ -82,41 +95,75 @@ while true
         Ip_norm(Ip_norm<thresh) = 0;
         % Convert to greyscale
         Ip_norm_grey = rgb2gray(Ip_norm);
-%         figure, imshow(Ip_norm_grey)
-%         figure, imhist(Ip_norm_grey)
+        figure(5), imshow(Ip_norm_grey)
+%         figure(6), imhist(Ip_norm_grey)
         % Threshold image to isolate brightest colors
         level = 0.6;
         % Convert to binary image
         fThresh = im2bw(Ip_norm_grey, level) ;
+        
+%         % Filter out noise smaller than threshold
+        noiseThresh = 10;
+        fThresh = filterNoise(fThresh,noiseThresh);        
+        
+        figure(7), imshow(fThresh);
 
         areaMeasurements = regionprops(fThresh, 'Area');
-        centroidLocations = regionprops(fThresh, 'Centroid');
         [allAreas ind] = sort([areaMeasurements.Area],'descend');
-        center = centroidLocations(ind(1));
-        center = [center.Centroid(2) center.Centroid(1)]; % Because centroid gets returned in Y,X
         
-        iter = 1;
-        distances = [];
-        
-        for k =1:size(fThresh,1)
-            for l=1:size(fThresh,2)
-                if fThresh(k,l) == 1
-                    distances(iter) = norm([k,l]-center)^2;
-                    iter = iter + 1;
+        if length(areaMeasurements) > 0
+            
+            NumRegions(i) = length(allAreas);
+            
+            centroidLocations = regionprops(fThresh, 'Centroid');            
+            center = centroidLocations(ind(1));
+            center = [center.Centroid(2) center.Centroid(1)]; % Because centroid gets returned in Y,X
+
+            pixelSet = PixelsInBoundary(fThresh,ind(1)); % Finds pixels in the biggest region
+            avgPixel = [0;0;0];
+            varPixel = 0;
+            for k=1:size(pixelSet,1)
+               avgPixel = avgPixel + double(squeeze(I(pixelSet(k,1), pixelSet(k,2),:)));   
+            end
+            avgPixel = avgPixel/size(pixelSet,1);
+            for k=1:size(pixelSet,1)
+               varPixel = varPixel + norm(avgPixel - double(squeeze(I(pixelSet(k,1), pixelSet(k,2),:))))^2;   
+            end        
+            varPixel = varPixel/size(pixelSet,1);
+            gamma = 2.2;
+            Y = .2126 * avgPixel(1)^gamma + .7152 * avgPixel(2)^gamma + .0722 * avgPixel(3)^gamma; 
+            L(i) = 116 * Y ^ 1/3 - 16;
+            N(i) = norm(avgPixel);
+            V(i) = varPixel;
+
+            iter = 1;
+            distances = [];
+
+            for k =1:size(fThresh,1)
+                for l=1:size(fThresh,2)
+                    if fThresh(k,l) == 1
+                        distances(iter) = norm([k,l]-center)^2;
+                        iter = iter + 1;
+                    end
                 end
             end
-        end
-        
-        avgVar = mean(distances);
 
-        % Exit Data Folder
-        cd ~/Box' Sync'/School/Graduate/CS229/Project/imagepreprocessing
+            avgVar = mean(distances);
+        else
+            L(i) = 0;
+            N(i) = 0;
+            V(i) = 0;
+            allAreas = [0];
+            NumRegions(i) = 0;
+            avgVar = 1000; % Set to large number to distinguish from images with a concentrated point
+            
+        end
+
 
         %% Output data to text file
 
-        NumRegions(i) = length(allAreas);
         MaxRegionArea(i) = allAreas(1);
-        Classification(i) = classification;
+        Classification(i) = class;
         Distance(i) = distance;
         AvgVar(i) = avgVar;
         
@@ -129,7 +176,7 @@ while true
         % Output to Readable TXT Format
         fileID2 = fopen('circleParams.txt','a+');
         fmt = '\n';
-        line = strcat(base_filename,' NumRegions:',num2str(length(allAreas)),' MaxRegionArea:',num2str(max(allAreas)),' Classification:',num2str(classification),' Distance:',num2str(distance), ' AreaFrac:',num2str(RegionChange(i)), ' AvgVar:',num2str(AvgVar(i)))
+        line = strcat(base_filename,' NumRegions:',num2str(NumRegions(i)),' MaxRegionArea:',num2str(MaxRegionArea(i)),' Classification:',num2str(class),' Distance:',num2str(distance), ' AreaFrac:',num2str(RegionChange(i)), ' AvgVar:',num2str(AvgVar(i)))
         fprintf(fileID2,'%s\n',line{1});
         fclose(fileID2);
         
@@ -146,7 +193,7 @@ while true
         end        
         num_missing = num_missing+1;
         % Exit Data Folder
-        cd ~/Box' Sync'/School/Graduate/CS229/Project/imagepreprocessing
+        cd ..
         fprintf('Could not find an image file');
     end    
 end
@@ -174,12 +221,32 @@ figure, scatter(AvgVar,Classification) % Sanity check that our data isn't biased
 set(gca,'xscale','log')
 title('AvgVar')
 
-% X = [MaxRegionArea' NumRegions' Distance'];
-% Y = Classification'+1;
+figure, scatter(L,Classification)
+title('L vs Class')
 
-% [B,dev,stats] = mnrfit(Training,Group)
+figure, scatter(N,Classification)
+title('N vs Class')
 
-% mdl = fitglm(X,Y)
+figure, scatter(V,Classification)
+title('V vs Class')
+% 
+% %%
+% %Training = [NumRegions' MaxRegionArea' Distance' AvgVar' RegionChange'];
+% Training = [MaxRegionArea' RegionChange'];
+% Group = [Classification'];
+%  
+% %svmtrain(Training,Group,'kernel_function','rbf')
+% %%
+% test_size = 20;
+% xtrain = Training((1:size(Training,1)-test_size),:);
+% xtest = Training((size(Training,1)-test_size:end),:);
+% ytrain = Group(1:size(Group,1)-test_size);
+% ytest =  Group(size(Group,1)-test_size:end);
+% Model = svmtrain(xtrain,ytrain);
+% Vals = svmclassify(Model,xtest);
+% Sol = Vals-ytest
+% Sol = abs(Sol(Sol~=0));
+% sum(Sol)/length(Vals)
 
 
 

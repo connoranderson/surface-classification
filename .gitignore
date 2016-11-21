@@ -1,1 +1,3 @@
-imagepreprocessing/Data/
+imagepreprocessing/Data/*
+.DS_Store
+
