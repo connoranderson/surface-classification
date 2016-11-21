@@ -90,7 +90,7 @@ end
 %Ip_norm = double(Ip_norm)./max(double(max(double(Ip_norm(:,:)))))*255;
 Ip_norm = uint8(round(Ip_norm));
 % figure(4), imshow(Ip_norm,[])
-imwrite(Ip_norm,'normsubtract.jpg')
+% imwrite(Ip_norm,'normsubtract.jpg')
 
 % Find mean pixel and use it as threshold for black/white
 meanPixel = squeeze(mean(mean(Ip_norm)));
