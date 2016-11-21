@@ -249,19 +249,19 @@ title('MeanPixIntensity vs Class')
              Training = [MaxRegionArea' RegionChange' MaxPixIntensity']; %
                          Group = [Classification'];
                                   
-%svmtrain(Training,Group,'kernel_function','rbf')
-%%
-test_size = 20;
-xtrain = Training((1:size(Training,1)-test_size),:);
-xtest = Training((size(Training,1)-test_size:end),:);
-ytrain = Group(1:size(Group,1)-test_size);
-ytest = Group(size(Group,1)-test_size:end);
-Model = svmtrain(xtrain,ytrain);
-Vals = svmclassify(Model,xtest);
-Sol = Vals-ytest
-Sol = abs(Sol(Sol~=0));
-1-sum(Sol)/length(Vals)
-Sol4Xcel = (Vals-ytest)'
+% %svmtrain(Training,Group,'kernel_function','rbf')
+% %%
+% test_size = 20;
+% xtrain = Training((1:size(Training,1)-test_size),:);
+% xtest = Training((size(Training,1)-test_size:end),:);
+% ytrain = Group(1:size(Group,1)-test_size);
+% ytest = Group(size(Group,1)-test_size:end);
+% Model = svmtrain(xtrain,ytrain);
+% Vals = svmclassify(Model,xtest);
+% Sol = Vals-ytest
+% Sol = abs(Sol(Sol~=0));
+% 1-sum(Sol)/length(Vals)
+% Sol4Xcel = (Vals-ytest)'
 % 
 % 
 % % ----------REFERENCE----------
