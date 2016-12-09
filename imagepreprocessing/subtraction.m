@@ -60,7 +60,12 @@ I = imread(filename_flash);
 %         figure(1), imshow(I,[])
 B = imread(filename_noflash);
 %         figure(2), imshow(B,[])
-
+mean_intensity_noflash(i) = mean(mean(mean(B)));
+mean_intensity_flash(i) = mean(mean(mean(B)));
+mean_colors = squeeze(mean(mean(B)));
+red_to_green(i) = mean_colors(1)/mean_colors(2);
+blue_to_green(i) = mean_colors(3)/mean_colors(2);
+red_to_blue(i) = mean_colors(1)/mean_colors(3);
 % Exit Data Folder
 cd ..
 
@@ -90,7 +95,7 @@ end
 %Ip_norm = double(Ip_norm)./max(double(max(double(Ip_norm(:,:)))))*255;
 Ip_norm = uint8(round(Ip_norm));
 % figure(4), imshow(Ip_norm,[])
-% imwrite(Ip_norm,'normsubtract.jpg')
+imwrite(Ip_norm,'normsubtract.jpg')
 
 % Find mean pixel and use it as threshold for black/white
 meanPixel = squeeze(mean(mean(Ip_norm)));
@@ -234,8 +239,22 @@ title('N vs Class')
 figure, scatter(V,Classification)
 title('V vs Class')
 
+figure, scatter(mean_intensity_noflash,Classification)
+title('mean intensity noflash vs Class')
+
+figure, scatter(mean_intensity_flash,Classification)
+title('mean intensity flash vs Class')
+
+figure, scatter(red_to_green,Classification)
+title('red to green vs Class')
+
+figure, scatter(blue_to_green,Classification)
+title('blue to green vs Class')
+
+figure, scatter(red_to_blue,Classification)
+title('red to blue vs Class')
+
 figure, scatter(MaxPixIntensity,Classification)
-% MaxPixel
 title('Maximum Pixel Intensity After Subtraction vs Class')
 xlabel('Maximum Pixel Intensity After Subtraction');
 ylabel('Class (Glass: 1, Bark: 0)')
@@ -246,42 +265,42 @@ title('MeanPixIntensity vs Class')
 
 %%
 %Training = [NumRegions' MaxRegionArea' Distance' AvgVar' RegionChange'];
-             Training = [MaxRegionArea' RegionChange' MaxPixIntensity']; %
-                         Group = [Classification'];
-                                  
-%svmtrain(Training,Group,'kernel_function','rbf')
-%%
-test_size = 20;
-xtrain = Training((1:size(Training,1)-test_size),:);
-xtest = Training((size(Training,1)-test_size:end),:);
-ytrain = Group(1:size(Group,1)-test_size);
-ytest = Group(size(Group,1)-test_size:end);
-Model = svmtrain(xtrain,ytrain);
-Vals = svmclassify(Model,xtest);
-Sol = Vals-ytest
-Sol = abs(Sol(Sol~=0));
-1-sum(Sol)/length(Vals)
-Sol4Xcel = (Vals-ytest)'
-% 
-% 
-% % ----------REFERENCE----------
-% %         figure, imshow(fThresh)
-% %         imwrite(fThresh,'topHat_grey.jpg')
-% 
-% %         [B,L,N,A] = bwboundaries(fThresh,'noholes');
-% %         figure, imshow(fThresh); hold on;
-% %         colors=['b' 'g' 'r' 'c' 'm' 'y'];
-% %         for k=1:length(B),
-% %           boundary = B{k};
-% %           cidx = mod(k,length(colors))+1;
-% %           plot(boundary(:,2), boundary(:,1),...
-%                %                colors(cidx),'LineWidth',2);
-% %
-% %           %randomize text position for better visibility
-% %           rndRow = ceil(length(boundary)/(mod(rand*k,7)+1));
-% %           col = boundary(rndRow,2); row = boundary(rndRow,1);
-% %           h = text(col+1, row-1, num2str(L(row,col)));
-% %           set(h,'Color',colors(cidx),'FontSize',14,'FontWeight','bold');
-% %         end
-
-                                  
+             Training = [MaxRegionArea' RegionChange' MaxPixIntensity',red_to_green']; %
+             Group = [Classification'];
+                      
+                      %svmtrain(Training,Group,'kernel_function','rbf')
+                      %%
+                      test_size = 20;
+                      xtrain = Training((1:size(Training,1)-test_size),:);
+                      xtest = Training((size(Training,1)-test_size:end),:);
+                      ytrain = Group(1:size(Group,1)-test_size);
+                      ytest = Group(size(Group,1)-test_size:end);
+                      Model = svmtrain(xtrain,ytrain);
+                      Vals = svmclassify(Model,xtest);
+                      Sol = Vals-ytest
+                      Sol = abs(Sol(Sol~=0));
+                      1-sum(Sol)/length(Vals);
+                      Sol4Xcel = (Vals-ytest)'
+                      
+                      
+                      % ----------REFERENCE----------
+                      %         figure, imshow(fThresh)
+                      %         imwrite(fThresh,'topHat_grey.jpg')
+                      
+                      %         [B,L,N,A] = bwboundaries(fThresh,'noholes');
+                      %         figure, imshow(fThresh); hold on;
+                      %         colors=['b' 'g' 'r' 'c' 'm' 'y'];
+                      %         for k=1:length(B),
+                      %           boundary = B{k};
+                      %           cidx = mod(k,length(colors))+1;
+                      %           plot(boundary(:,2), boundary(:,1),...
+                                       %                colors(cidx),'LineWidth',2);
+                      %
+                      %           %randomize text position for better visibility
+                      %           rndRow = ceil(length(boundary)/(mod(rand*k,7)+1));
+                      %           col = boundary(rndRow,2); row = boundary(rndRow,1);
+                      %           h = text(col+1, row-1, num2str(L(row,col)));
+                      %           set(h,'Color',colors(cidx),'FontSize',14,'FontWeight','bold');
+                      %         end
+                      
+                      
