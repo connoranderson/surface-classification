@@ -12,6 +12,9 @@ clear all;
 
 % Load distance data
 fileID = fopen('Data/distanceData.txt','r');
+addpath Data
+addpath Data/in_walls
+addpath Data/out_walls
 
 % Variables Logging Missing Images
 num_missing = 0;
@@ -51,7 +54,9 @@ class = str2num(class_string(length(class_string)));
 distance = str2num(n{5});
 
 % Enter Data Folder
-cd Data
+%cd Data
+
+
 
 % Check if image exists in directory
 if exist(filename_flash, 'file') == 2 && exist(filename_noflash, 'file') == 2
@@ -67,7 +72,7 @@ red_to_green(i) = mean_colors(1)/mean_colors(2);
 blue_to_green(i) = mean_colors(3)/mean_colors(2);
 red_to_blue(i) = mean_colors(1)/mean_colors(3);
 % Exit Data Folder
-cd ..
+%cd ..
 
 % Image subtraction
 normI = im2double(I);
@@ -202,7 +207,7 @@ num_onlyOne = num_onlyOne+1;
 end
 num_missing = num_missing+1;
 % Exit Data Folder
-cd ..
+%cd ..
 fprintf('Could not find an image file');
 end
 end
@@ -282,6 +287,31 @@ title('MeanPixIntensity vs Class')
                       1-sum(Sol)/length(Vals);
                       Sol4Xcel = (Vals-ytest)'
                       
+                      
+                      %% Sort Data into subfolders
+                      %
+                      % while true
+                      %     % Get next image filename
+                      %     close all;
+                      %     tline = fgetl(fileID);
+                      %     if tline == -1
+                      %        break
+                      %     end
+                      %     pat = '\s+';
+                      %     n = regexp(tline, pat, 'split');
+                      %     space = ' ';
+                      %     base_filename = strcat(n(1),{space},n(2));
+                      %     filename_flash = strcat(n(1),{space},n(2),{space},'wflash.jpg');
+                      %     filename_noflash = strcat(n(1),{space},n(2),{space},'noflash.jpg');
+                      %     filename_flash = strrep(filename_flash{1},':','_');
+                      %     filename_noflash = strrep(filename_noflash{1},':','_');
+                      %     class_string = n{6};
+                      %     class = str2num(class_string(length(class_string)));
+                      %     distance = str2num(n{5});
+                      %
+                      %
+                      % end
+                      %
                       
                       % ----------REFERENCE----------
                       %         figure, imshow(fThresh)
