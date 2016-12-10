@@ -1,5 +1,5 @@
 %% CS229 Image Preprocessing
-% Code by Connor Anderson
+% Code by Connor Anderson and Will Roderick
 
 % Navigates to data folder and goes through images one by one, subtracting
 % the flash images with the raw image to find the number of potential flash
@@ -60,6 +60,20 @@ distance = str2num(n{5});
 
 % Check if image exists in directory
 if exist(filename_flash, 'file') == 2 && exist(filename_noflash, 'file') == 2
+
+%         filefound = false;
+%         for q = 1:name_vec
+%             if filename_noflash == name_vec(q)
+%                 filefound = true;
+%                 score1(i) = score(q,1);
+%                 score2(i) = score(q,2);
+%             end
+%         end
+%         if filefound == false
+%             score1(i) = 0;
+%             score2(i) = 0;
+%         end
+
 num_processed = num_processed + 1;
 I = imread(filename_flash);
 %         figure(1), imshow(I,[])
@@ -178,6 +192,7 @@ end
 
 MaxRegionArea(i) = allAreas(1);
 Classification(i) = class;
+Filename_vec(i,:) = filename_noflash;
 Distance(i) = distance;
 AvgVar(i) = avgVar;
 
@@ -202,6 +217,7 @@ fprintf(fileID3,'%s\n',line{1});
 fclose(fileID3);
 
 else
+i = i-1;
 if exist(filename_flash, 'file') == 2 || exist(filename_noflash, 'file') == 2
 num_onlyOne = num_onlyOne+1;
 end
@@ -262,75 +278,99 @@ title('red to blue vs Class')
 figure, scatter(MaxPixIntensity,Classification)
 title('Maximum Pixel Intensity After Subtraction vs Class')
 xlabel('Maximum Pixel Intensity After Subtraction');
-ylabel('Class (Glass: 1, Bark: 0)')
-axis([0 450 -0.1 1.1]);
+ylabel('Class (Outdoor wall: 1, Indoor wall: 0)')
+%axis([0 450 -0.1 1.1]);
 
 figure, scatter(MeanPixIntensity,Classification)
 title('MeanPixIntensity vs Class')
 
 %%
 %Training = [NumRegions' MaxRegionArea' Distance' AvgVar' RegionChange'];
-             Training = [MaxRegionArea' RegionChange' MaxPixIntensity',red_to_green']; %
-             Group = [Classification'];
-                      
-                      %svmtrain(Training,Group,'kernel_function','rbf')
-                      %%
-                      test_size = 20;
-                      xtrain = Training((1:size(Training,1)-test_size),:);
-                      xtest = Training((size(Training,1)-test_size:end),:);
-                      ytrain = Group(1:size(Group,1)-test_size);
-                      ytest = Group(size(Group,1)-test_size:end);
-                      Model = svmtrain(xtrain,ytrain);
-                      Vals = svmclassify(Model,xtest);
-                      Sol = Vals-ytest
-                      Sol = abs(Sol(Sol~=0));
-                      1-sum(Sol)/length(Vals);
-                      Sol4Xcel = (Vals-ytest)'
-                      
-                      
-                      %% Sort Data into subfolders
-                      %
-                      % while true
-                      %     % Get next image filename
-                      %     close all;
-                      %     tline = fgetl(fileID);
-                      %     if tline == -1
-                      %        break
-                      %     end
-                      %     pat = '\s+';
-                      %     n = regexp(tline, pat, 'split');
-                      %     space = ' ';
-                      %     base_filename = strcat(n(1),{space},n(2));
-                      %     filename_flash = strcat(n(1),{space},n(2),{space},'wflash.jpg');
-                      %     filename_noflash = strcat(n(1),{space},n(2),{space},'noflash.jpg');
-                      %     filename_flash = strrep(filename_flash{1},':','_');
-                      %     filename_noflash = strrep(filename_noflash{1},':','_');
-                      %     class_string = n{6};
-                      %     class = str2num(class_string(length(class_string)));
-                      %     distance = str2num(n{5});
-                      %
-                      %
-                      % end
-                      %
-                      
-                      % ----------REFERENCE----------
-                      %         figure, imshow(fThresh)
-                      %         imwrite(fThresh,'topHat_grey.jpg')
-                      
-                      %         [B,L,N,A] = bwboundaries(fThresh,'noholes');
-                      %         figure, imshow(fThresh); hold on;
-                      %         colors=['b' 'g' 'r' 'c' 'm' 'y'];
-                      %         for k=1:length(B),
-                      %           boundary = B{k};
-                      %           cidx = mod(k,length(colors))+1;
-                      %           plot(boundary(:,2), boundary(:,1),...
-                                       %                colors(cidx),'LineWidth',2);
-                      %
-                      %           %randomize text position for better visibility
-                      %           rndRow = ceil(length(boundary)/(mod(rand*k,7)+1));
-                      %           col = boundary(rndRow,2); row = boundary(rndRow,1);
-                      %           h = text(col+1, row-1, num2str(L(row,col)));
-                      %           set(h,'Color',colors(cidx),'FontSize',14,'FontWeight','bold');
-                      %         end
-                      
-                      
+             %Training = [MeanPixIntensity' AvgVar' NumRegions'  MaxRegionArea' RegionChange' MaxPixIntensity' red_to_blue' blue_to_green']; %
+             %Training = [MeanPixIntensity' AvgVar' NumRegions'  MaxRegionArea' RegionChange' MaxPixIntensity']; %
+             Training = [MeanPixIntensity' NumRegions'  MaxRegionArea' RegionChange' MaxPixIntensity']; %
+                         %Training = [MeanPixIntensity' NumRegions'  MaxRegionArea' RegionChange'];
+                         
+                         Group = [Classification'];
+                                  
+                                  %svmtrain(Training,Group,'kernel_function','rbf')
+                                  %%
+                                  
+                                  %test_size = 20;
+                                  %xtrain = Training((1:size(Training,1)-test_size),:);
+                                  %xtest = Training((size(Training,1)-test_size:end),:);
+                                  %ytrain = Group(1:size(Group,1)-test_size);
+                                  %ytest = Group(size(Group,1)-test_size:end);
+                                  
+                                  
+                                  % Generate indices
+                                  %   Holdout
+                                  %[Train_ind, Test_ind] = crossvalind('HoldOut', Classification, 0.3);
+                                  %   Kfold
+                                  fold_num = 10;
+                                  k_fold_indices = crossvalind('Kfold', Classification, fold_num);
+                                  Mis_class_as_out = zeros(fold_num,1);
+                                  Mis_class_as_in = zeros(fold_num,1);
+                                  
+                                  for fold_iter = 1:fold_num
+                                  xtrain = [];
+                                  xtest = [];
+                                  ytrain = [];
+                                  ytest = [];
+                                  for i = 1:length(Classification)
+                                  if k_fold_indices(i) == fold_iter
+                                  xtest = [xtest; Training(i,:)];
+                                  ytest = [ytest; Group(i,:)];
+                                  else
+                                  xtrain = [xtrain; Training(i,:)];
+                                  ytrain = [ytrain; Group(i,:)];
+                                  end
+                                  end
+                                  
+                                  
+                                  Model = svmtrain(xtrain,ytrain);
+                                  Vals = svmclassify(Model,xtest);
+                                  
+                                  Counts = Vals-ytest;
+                                  Sol = abs(Counts(Counts~=0));
+                                  PercentageCorrect(fold_iter) = 1-sum(Sol)/length(Vals);
+                                  
+                                  % 1 is outdoor, 0 is indoor
+                                  for q = 1:length(Vals)
+                                  if Counts(q) > 0
+                                  Mis_class_as_out(fold_iter) = Mis_class_as_out(fold_iter) + 1;
+                                  elseif Counts(q) < 0
+                                  Mis_class_as_in(fold_iter) = Mis_class_as_in(fold_iter) + 1;
+                                  end
+                                  end
+                                  Mis_class_as_out(fold_iter) = Mis_class_as_out(fold_iter)/length(Vals);
+                                  Mis_class_as_in(fold_iter) = Mis_class_as_in(fold_iter)/length(Vals);
+                                  
+                                  Sol4Xcel = (Vals-ytest)';
+                                  end
+                                  
+                                  PercentageCorrect = mean(PercentageCorrect)
+                                  Mis_class_as_out = mean(Mis_class_as_out)
+                                  Mis_class_as_in = mean(Mis_class_as_in)
+                                  
+                                  
+                                  
+                                  % ----------REFERENCE----------
+                                  %         figure, imshow(fThresh)
+                                  %         imwrite(fThresh,'topHat_grey.jpg')
+                                  
+                                  %         [B,L,N,A] = bwboundaries(fThresh,'noholes');
+                                  %         figure, imshow(fThresh); hold on;
+                                  %         colors=['b' 'g' 'r' 'c' 'm' 'y'];
+                                  %         for k=1:length(B),
+                                  %           boundary = B{k};
+                                  %           cidx = mod(k,length(colors))+1;
+                                  %           plot(boundary(:,2), boundary(:,1),...
+                                                   %                colors(cidx),'LineWidth',2);
+                                  % 
+                                  %           %randomize text position for better visibility
+                                  %           rndRow = ceil(length(boundary)/(mod(rand*k,7)+1));
+                                  %           col = boundary(rndRow,2); row = boundary(rndRow,1);
+                                  %           h = text(col+1, row-1, num2str(L(row,col)));
+                                  %           set(h,'Color',colors(cidx),'FontSize',14,'FontWeight','bold');
+                                  %         end
