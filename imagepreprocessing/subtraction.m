@@ -9,6 +9,7 @@
 
 close all;
 clear all;
+load('IndoorOutdoorWallDat.mat')
 
 % Load distance data
 fileID = fopen('Data/distanceData.txt','r');
@@ -61,18 +62,18 @@ distance = str2num(n{5});
 % Check if image exists in directory
 if exist(filename_flash, 'file') == 2 && exist(filename_noflash, 'file') == 2
 
-%         filefound = false;
-%         for q = 1:name_vec
-%             if filename_noflash == name_vec(q)
-%                 filefound = true;
-%                 score1(i) = score(q,1);
-%                 score2(i) = score(q,2);
-%             end
-%         end
-%         if filefound == false
-%             score1(i) = 0;
-%             score2(i) = 0;
-%         end
+filefound = false;
+for q = 1:length(outputCellVec)
+if strcmp(filename_noflash,outputCellVec(q))
+filefound = true;
+score_indoor(i) = outputMatrix(q,1);
+score_outdoor(i) = outputMatrix(q,2);
+end
+end
+if filefound == false
+score_indoor(i) = 0;
+score_outdoor(i) = 0;
+end
 
 num_processed = num_processed + 1;
 I = imread(filename_flash);
@@ -288,89 +289,90 @@ title('MeanPixIntensity vs Class')
 %Training = [NumRegions' MaxRegionArea' Distance' AvgVar' RegionChange'];
              %Training = [MeanPixIntensity' AvgVar' NumRegions'  MaxRegionArea' RegionChange' MaxPixIntensity' red_to_blue' blue_to_green']; %
              %Training = [MeanPixIntensity' AvgVar' NumRegions'  MaxRegionArea' RegionChange' MaxPixIntensity']; %
-             Training = [MeanPixIntensity' NumRegions'  MaxRegionArea' RegionChange' MaxPixIntensity']; %
-                         %Training = [MeanPixIntensity' NumRegions'  MaxRegionArea' RegionChange'];
-                         
-                         Group = [Classification'];
-                                  
-                                  %svmtrain(Training,Group,'kernel_function','rbf')
-                                  %%
-                                  
-                                  %test_size = 20;
-                                  %xtrain = Training((1:size(Training,1)-test_size),:);
-                                  %xtest = Training((size(Training,1)-test_size:end),:);
-                                  %ytrain = Group(1:size(Group,1)-test_size);
-                                  %ytest = Group(size(Group,1)-test_size:end);
-                                  
-                                  
-                                  % Generate indices
-                                  %   Holdout
-                                  %[Train_ind, Test_ind] = crossvalind('HoldOut', Classification, 0.3);
-                                  %   Kfold
-                                  fold_num = 10;
-                                  k_fold_indices = crossvalind('Kfold', Classification, fold_num);
-                                  Mis_class_as_out = zeros(fold_num,1);
-                                  Mis_class_as_in = zeros(fold_num,1);
-                                  
-                                  for fold_iter = 1:fold_num
-                                  xtrain = [];
-                                  xtest = [];
-                                  ytrain = [];
-                                  ytest = [];
-                                  for i = 1:length(Classification)
-                                  if k_fold_indices(i) == fold_iter
-                                  xtest = [xtest; Training(i,:)];
-                                  ytest = [ytest; Group(i,:)];
-                                  else
-                                  xtrain = [xtrain; Training(i,:)];
-                                  ytrain = [ytrain; Group(i,:)];
-                                  end
-                                  end
-                                  
-                                  
-                                  Model = svmtrain(xtrain,ytrain);
-                                  Vals = svmclassify(Model,xtest);
-                                  
-                                  Counts = Vals-ytest;
-                                  Sol = abs(Counts(Counts~=0));
-                                  PercentageCorrect(fold_iter) = 1-sum(Sol)/length(Vals);
-                                  
-                                  % 1 is outdoor, 0 is indoor
-                                  for q = 1:length(Vals)
-                                  if Counts(q) > 0
-                                  Mis_class_as_out(fold_iter) = Mis_class_as_out(fold_iter) + 1;
-                                  elseif Counts(q) < 0
-                                  Mis_class_as_in(fold_iter) = Mis_class_as_in(fold_iter) + 1;
-                                  end
-                                  end
-                                  Mis_class_as_out(fold_iter) = Mis_class_as_out(fold_iter)/length(Vals);
-                                  Mis_class_as_in(fold_iter) = Mis_class_as_in(fold_iter)/length(Vals);
-                                  
-                                  Sol4Xcel = (Vals-ytest)';
-                                  end
-                                  
-                                  PercentageCorrect = mean(PercentageCorrect)
-                                  Mis_class_as_out = mean(Mis_class_as_out)
-                                  Mis_class_as_in = mean(Mis_class_as_in)
-                                  
-                                  
-                                  
-                                  % ----------REFERENCE----------
-                                  %         figure, imshow(fThresh)
-                                  %         imwrite(fThresh,'topHat_grey.jpg')
-                                  
-                                  %         [B,L,N,A] = bwboundaries(fThresh,'noholes');
-                                  %         figure, imshow(fThresh); hold on;
-                                  %         colors=['b' 'g' 'r' 'c' 'm' 'y'];
-                                  %         for k=1:length(B),
-                                  %           boundary = B{k};
-                                  %           cidx = mod(k,length(colors))+1;
-                                  %           plot(boundary(:,2), boundary(:,1),...
-                                                   %                colors(cidx),'LineWidth',2);
-                                  % 
-                                  %           %randomize text position for better visibility
-                                  %           rndRow = ceil(length(boundary)/(mod(rand*k,7)+1));
-                                  %           col = boundary(rndRow,2); row = boundary(rndRow,1);
-                                  %           h = text(col+1, row-1, num2str(L(row,col)));
-                                  %           set(h,'Color',colors(cidx),'FontSize',14,'FontWeight','bold');
-                                  %         end
+             Training = [score_indoor' score_outdoor' MeanPixIntensity' NumRegions'  MaxRegionArea' RegionChange' MaxPixIntensity']; %
+                         Training = [MeanPixIntensity' NumRegions'  MaxRegionArea' RegionChange' MaxPixIntensity']; %
+                                     
+                                     
+                                     Group = [Classification'];
+                                              
+                                              %svmtrain(Training,Group,'kernel_function','rbf')
+                                              %%
+                                              
+                                              %test_size = 20;
+                                              %xtrain = Training((1:size(Training,1)-test_size),:);
+                                              %xtest = Training((size(Training,1)-test_size:end),:);
+                                              %ytrain = Group(1:size(Group,1)-test_size);
+                                              %ytest = Group(size(Group,1)-test_size:end);
+                                              
+                                              
+                                              % Generate indices
+                                              %   Holdout
+                                              %[Train_ind, Test_ind] = crossvalind('HoldOut', Classification, 0.3);
+                                              %   Kfold
+                                              fold_num = 10;
+                                              k_fold_indices = crossvalind('Kfold', Classification, fold_num);
+                                              Mis_class_as_out = zeros(fold_num,1);
+                                              Mis_class_as_in = zeros(fold_num,1);
+                                              
+                                              for fold_iter = 1:fold_num
+                                              xtrain = [];
+                                              xtest = [];
+                                              ytrain = [];
+                                              ytest = [];
+                                              for i = 1:length(Classification)
+                                              if k_fold_indices(i) == fold_iter
+                                              xtest = [xtest; Training(i,:)];
+                                              ytest = [ytest; Group(i,:)];
+                                              else
+                                              xtrain = [xtrain; Training(i,:)];
+                                              ytrain = [ytrain; Group(i,:)];
+                                              end
+                                              end
+                                              
+                                              
+                                              Model = svmtrain(xtrain,ytrain);
+                                              Vals = svmclassify(Model,xtest);
+                                              
+                                              Counts = Vals-ytest;
+                                              Sol = abs(Counts(Counts~=0));
+                                              PercentageCorrect(fold_iter) = 1-sum(Sol)/length(Vals);
+                                              
+                                              % 1 is outdoor, 0 is indoor
+                                              for q = 1:length(Vals)
+                                              if Counts(q) > 0
+                                              Mis_class_as_out(fold_iter) = Mis_class_as_out(fold_iter) + 1;
+                                              elseif Counts(q) < 0
+                                              Mis_class_as_in(fold_iter) = Mis_class_as_in(fold_iter) + 1;
+                                              end
+                                              end
+                                              Mis_class_as_out(fold_iter) = Mis_class_as_out(fold_iter)/length(Vals);
+                                              Mis_class_as_in(fold_iter) = Mis_class_as_in(fold_iter)/length(Vals);
+                                              
+                                              Sol4Xcel = (Vals-ytest)';
+                                              end
+                                              
+                                              PercentageCorrect = mean(PercentageCorrect)
+                                              Mis_class_as_out = mean(Mis_class_as_out)
+                                              Mis_class_as_in = mean(Mis_class_as_in)
+                                              
+                                              
+                                              
+                                              % ----------REFERENCE----------
+                                              %         figure, imshow(fThresh)
+                                              %         imwrite(fThresh,'topHat_grey.jpg')
+                                              
+                                              %         [B,L,N,A] = bwboundaries(fThresh,'noholes');
+                                              %         figure, imshow(fThresh); hold on;
+                                              %         colors=['b' 'g' 'r' 'c' 'm' 'y'];
+                                              %         for k=1:length(B),
+                                              %           boundary = B{k};
+                                              %           cidx = mod(k,length(colors))+1;
+                                              %           plot(boundary(:,2), boundary(:,1),...
+                                                               %                colors(cidx),'LineWidth',2);
+                                              % 
+                                              %           %randomize text position for better visibility
+                                              %           rndRow = ceil(length(boundary)/(mod(rand*k,7)+1));
+                                              %           col = boundary(rndRow,2); row = boundary(rndRow,1);
+                                              %           h = text(col+1, row-1, num2str(L(row,col)));
+                                              %           set(h,'Color',colors(cidx),'FontSize',14,'FontWeight','bold');
+                                              %         end
